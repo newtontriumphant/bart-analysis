@@ -396,45 +396,113 @@
                 <p>Vienna (obviously) is quite a bit more impressive than BART. Why is that, you may ask? Well, it's mainly due to Vienna's <span class="hl">365-Euro Annual Pass</span> that lets you use ALL forms of public transport within Vienna an unlimited amount of times for only one euro a day. This is the sole reason why Vienna is one of the world's largest transport hubs, and the only reason why they're able to maintain a less than 40% car ownership rate (Bay Area: 85%!). Also, crime rates in Vienna are lower, and the Wiener Linien transport system agency is 100% city-owned. Finally, stations are spaced an average of half a mile apart, compared to BART's median of 2.6 miles. All of these factors come together to make Vienna's public transport (and Europe's system in general) both intuitive to use, unified, relatively cheap, and NOT massively in debt.</p>
             </div>
         </div>
+    </div>
 
-        <div class="divider"><span>09</span></div>
+    <div class="divider"><span>09</span></div>
 
-        <div id="live">
-            <div class="wrap">
-                <div class="eyebrow">09 - Live Train Positions</div>
-                <h2 class="sh">Real-Time <em>BART</em> Train Position Map</h2>
-                <div class="lead" style="margin-bottom: 0">
-                    <p>I thought this would be interesting to show: train positions are interpolated from BART's public ETD API. Yes, it's another map! What a shocker!</p>
+    <div id="live">
+        <div class="wrap">
+            <div class="eyebrow">09 - Live Train Positions</div>
+            <h2 class="sh">Real-Time <em>BART</em> Train Position Map</h2>
+            <div class="lead" style="margin-bottom: 0">
+                <p>I thought this would be interesting to show: train positions are interpolated from BART's public ETD API. Yes, it's another map! What a shocker!</p>
+            </div>
+
+            <div id="live-api-error" class="live-error">
+                <div class="err-hdr">BART API Unavailable</div>
+                <p id="live-api-error-msg">ERROR: u dumbass are prolly running ts on localhost, api unavailable</p>
+            </div>
+
+            <div class="live-layout">
+                <div>
+                    <div class="live-status">
+                        <span class="pdot"></span>
+                        <span id="live-status-txt">Connecting to API... ...HOLD TIGHT :3</span>
+                    </div>
+                    <div id="bart-live-map"></div>
+                    <div class="live-meta">
+                        Source: <a href="https://api.bart.gov/docs/etd/etd.aspx" target="_blank">api.bart.gov</a>
+                    </div>
                 </div>
 
-                <div id="live-api-error" class="live-error">
-                    <div class="err-hdr">BART API Unavailable</div>
-                    <p id="live-api-error-msg">ERROR: u dumbass are prolly running ts on localhost, api unavailable</p>
-                </div>
-
-                <div class="live-layout">
-                    <div>
-                        <div class="live-status">
-                            <span class="pdot"></span>
-                            <span id="live-status-txt">Connecting to API... ...HOLD TIGHT :3</span>
-                        </div>
-                        <div id="bart-live-map"></div>
-                        <div class="live-meta">
-                            Source: <a href="https://api.bart.gov/docs/etd/etd.aspx" target="_blank">api.bart.gov</a>
+                <div class="live-sidebar">
+                    <div class="panel">
+                        <h4><span class="pdot"></span> Imminent Departures</h4>
+                        <div class="etd-list" id="etd-list">
+                            <div class="etd-row"><div class="etd-dot" style="background:var(--dim)"></div><span class="etd-stn">Loading :3</span><span class="etd-min">-</span></div>
                         </div>
                     </div>
-
-                    <div class="live-sidebar">
-                        <div class="panel">
-                            <h4><span class="pdot"></span> Imminent Departures</h4>
-                            <div class="etd-list" id="etd-list">
-                                <div class="etd-row"><div class="etd-dot" style="background:var(--dim)"></div>
-                            </div>
+                    <div class="panel">
+                        <h4>Line Legend</h4>
+                        <div class="legend">
+                            <div class="leg-row"><div class="leg-sw" style="background:#ed1c24"></div>Red - Richmond - Millbrae</div>
+                            <div class="leg-row"><div class="leg-sw" style="background:#f9d71c"></div>Yellow - Antioch - SFO</div>
+                            <div class="leg-row"><div class="leg-sw" style="background:#ef7c00"></div>Orange - Richmond - Berryessa</div>
+                            <div class="leg-row"><div class="leg-sw" style="background:#00a1df"></div>Blue - Dublin - Daly City</div>
+                            <div class="leg-row"><div class="leg-sw" style="background:#4bbf6b"></div>Green - Berryessa - Daly City</div>
                         </div>
+                    </div>
+                    <div class="panel" id="train-count-panel">
+                        <h4>Active Trains</h4>
+                        <div style="font-family:var(--mono); font-size:1.4rem; font-weight:700; color:var(--blue)" id="train-count">-</div>
+                        <div style="font-family:var(--mono); font-size:0.6rem; color:var(--dim); margin-top:0.25rem">(approximately)</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <div class="divider"><span>10</span></div>
+
+    <div id="verdict" class="alt">
+        <div class="wrap narrow">
+            <div class="eyebrow">10 - Verdict</div>
+            <h2 class="sh">Was BART <em>Good</em> for the Community?</h2>
+            <div class="lead">
+                <p>Yes, at least overall. That being said, there were some quite important caveats.</p>
+                <p>BART transformed Bay Area mobility for over 50 years. It removes hundreds of thousands of car trips daily, connects lower-income communities in the outer East Bay to economic opportunity in San Francisco and Oakland, and has anchored transit-oriented development across the region. For riders who have no car alternative, which is quite a significant share of the ridership, it's not optional.</p>
+                <p>However, BART's history includes failures too: the displacement of working-class communities during construction, a regressive funding structure that burdens non-riders, the post-COVID fiscal collapse, and service headways that put it decades behind what peer cities consider normal. The proposed station closures would fall hardest on people who can't afford alternatives.</p>
+                <p>The deeper question at hand is not if BART was good for the community - it was - it's whether the Bay Area, one of the wealthiest regions on earth, is willing to treat transit as essential public infrastructure. Vienna and Munich show what that looks like. Unfortunately, there's still a missing political will - and the reform this November will tell us a great deal.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="divider"><span>11</span></div>
+
+    <div id="sources">
+        <div class="wrap narrow">
+            <div class="eyebrow">11 - Sources</div>
+            <h2 class="sh">Research <em>Sources</em></h2>
+            <div class="src-list">
+                <div class="src"><div class="src-n">[01]</div><div class="src-t">BART Official History. <a href="https://www.bart.gov/about/history" target="_blank">bart.gov/about/history</a></div></div>
+                <div class="src"><div class="src-n">[02]</div><div class="src-t">BART Fiscal Crisis page (2026). <a href="https://www.bart.gov/about/financials/crisis" target="_blank">bart.gov/about/financials/crisis</a></div></div>
+                <div class="src"><div class="src-n">[03]</div><div class="src-t">Knight, Heather and Karlamangla, Soumya. "The Bay Area Considers the Unthinkable: Life Without BART." <em>New York Times</em>, March 10, 2026.</div></div>
+                <div class="src"><div class="src-n">[04]</div><div class="src-t">SF Standard: "Riders say BART station closures could upend work and commutes." March 10, 2026.</div></div>
+                <div class="src"><div class="src-n">[05]</div><div class="src-t">BART Property Values study. <a href="https://www.bart.gov/sites/default/files/docs/2014-08%20BARTPropValues_Final_0.pdf" target="_blank">bart.gov - Property Values PDF</a></div></div>
+                <div class="src"><div class="src-n">[06]</div><div class="src-t">Key System history. <a href="https://en.wikipedia.org/wiki/Key_System" target="_blank">Wikipedia - Key System</a></div></div>
+                <div class="src"><div class="src-n">[07]</div><div class="src-t">FoundSF: "Planning and Selling BART." <a href="https://www.foundsf.org/Planning_and_Selling_BART" target="_blank">foundsf.org</a></div></div>
+                <div class="src"><div class="src-n">[08]</div><div class="src-t">BART ETD API - Real-time departure data. Key: MW9S-E7SL-26DW-CV4X. <a href="https://api.bart.gov/docs/etd/etd.aspx" target="_blank">api.bart.gov/docs</a></div></div>
+                <div class="src"><div class="src-n">[09]</div><div class="src-t">MVG (Münchner Verkehrsgesellschaft) Departure API. <a href="https://www.mvg.de" target="_blank">mvg.de</a></div></div>
+                <div class="src"><div class="src-n">[10]</div><div class="src-t">Wiener Linien Open Government Data Real-time API. <a href="https://www.wienerlinien.at/ogd_realtime/monitor" target="_blank">wienerlinien.at/ogd_realtime</a></div></div>
+                <div class="src"><div class="src-n">[11]</div><div class="src-t">BART Measure RR Oversight. <a href="https://www.bart.gov/about/reports/measurerr" target="_blank">bart.gov/about/reports/measurerr</a></div></div>
+                <div class="src"><div class="src-n">[12]</div><div class="src-t">Federal Transit Administration National Transit Database 2022. <a href="https://www.transit.dot.gov/ntd" target="_blank">transit.dot.gov/ntd</a></div></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="ft">
+            Public Good Analysis: BART &middot; K. Udo Funke &middot; Economics I
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
 </body>
 </html>

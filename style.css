@@ -1,0 +1,55 @@
+:root {
+    --bg: #0c0c0c;
+    --bg-lift: #141414;
+    --bg-card: #1a1a1a;
+    --border: #282828;
+    --text: #e6e3dc;
+    --muted: #7a7770;
+    --dim: #3a3835;
+    --orange: #f5a623;
+    --red: #e32726;
+    --green: #4db848;
+    --yellow: #f5d200;
+    --r: 5px;
+    --rl: 10px;
+    --mono: 'Space Mono', monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'DM Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0;}
+html { scroll-behavior: smooth; font-size: 16px; }
+body { background: var(--bg); color: var(--text); font-family: var(--body); line-height: 1.6; overflow-x: hidden; }
+::-webkit-scrollbar { width: 4px }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--blue); border-radius: 2px; }
+
+.leaflet-container { background: #070710 !important; }
+.leaflet-control-zoom a { background: #1a1a1a !important; color: var(--text) !important; border-color: var(--border) !important; }
+.leaflet-control-zoom a:hover { background: #282828 !important; }
+.leaflet-control-attribution { background: rgba(10,10,16,0.85) !important; color: var(--dim) !important; font-size: 0.55rem !important; }
+.leaflet-control-attribution a { color: var(--blue) !important; }
+
+#nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    height: 48px;
+    background: rgba(12,12,12,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 1.5rem
+}
+.nav-brand {
+    font-family: var(--mono); font-size: 0.75rem; font-weight: 700;
+    color: var(--blue); text-decoration: none; letter-spacing: 0.06em;
+    display: flex; align-items: center; gap: 0.5rem;
+}
+.nav-icon { width: 18px; height: 18px; flex-shrink: 0;}
+.nav-links { list-style: none; display: flex; gap: 0; }
+.nav-links a {
+    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted); text-decoration: none;
+    padding: 0.3rem 0.6rem; border-radius: var(--r);
+    transition: color .15s, background .15s;
+}
+.nav-links a:hover, .nav-links a.active { color: var(--blue); background: rgba(0,153,216,0.08); }
+@media (max-width: 860px) { .nav-links { display: none; } }
