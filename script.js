@@ -1,5 +1,5 @@
 'use strict';
-const CORS_PROXY = '/api/proxy?url=?';
+const CORS_PROXY = '/api/proxy?url=';
 
 (function() {
     const bg = document.getElementById('hero-parallax');
