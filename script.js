@@ -13,23 +13,22 @@ const CORS_PROXY = 'https://corsproxy.io/?';
     const sections = Array.from(links).map(a => document.querySelector(a.getAttribute('href')));
     window.addEventListener('scroll', () => {
         let cur = 0;
-        sections.forEach((el, i) => {
-            if (el && window.scrollY + 80 >= el.offsetTop) cur = i; })
-                links.forEach((l, i) => l.classList.toggle('active', i === cur));
-        }, { passive: true });
+        sections.forEach((el, i) => { if (el && window.scrollY + 80 >= el.offsetTop) cur = i; });
+links.forEach((l, i) => l.classList.toggle('active', i === cur));
+}, { passive: true });
 })();
-
+ 
 (function() {
     const io = new IntersectionObserver(entries => {
         entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('vis'); io.unobserve(e.target); } });
     }, { threshold: 0.1, rootMargin: '0px 0px -36px 0px' });
-    document.querySelectorAll('.fu, .tl_item').forEach(el => io.observe(el));
+    document.querySelectorAll('.fu, .tl-item').forEach(el => io.observe(el));
 
     const fundsec = document.getElementById('fund-section');
     if (fundsec) {
         const io2 = new IntersectionObserver(entries => {
             if (entries[0].isIntersecting) {
-                fundsec.querySelectorAll('.fb-fill').forEach (f => { f.style.width = f.dataset.pct; + '%'; });
+                fundsec.querySelectorAll('.fb-fill').forEach (f => { f.style.width = f.dataset.pct + '%'; });
                 io2.disconnect();
             }
         }, { threshold: 0.3 });
@@ -153,7 +152,7 @@ function createDarkMap(elementId, lat, lng, zoom, opts = {}) {
         scrollWheelZoom: opts.scrollWheelZoom !== false,
         ...opts.extraOpts
     });
-    L.titleLayer(CARTO_DARK_TILES, {
+    L.tileLayer(CARTO_DARK_TILES, {
         attribution: CARTO_ATTR,
         subdomains: 'abcd',
         maxZoom: 19,
@@ -320,10 +319,10 @@ function computeTrainPositions(etdStations) {
             });
         
     }
-
     async function refreshLive() {
         try {
             const stations = await fetchBARTEtd();
+            console.log('BART ETD loaded:', stations.length, 'stations');
             errorBox.style.display = 'none';
             lastFetch = new Date();
 
@@ -375,3 +374,226 @@ function computeTrainPositions(etdStations) {
 refreshLive();
 setInterval(refreshLive, 30000);
 })();
+
+// it works!! now for the smaller maps... ...time to pull an all-nighter :3
+
+(function() {
+    const el = document.getElementById('bart-cmp-map');
+    if (!el) return;
+    const map = createDarkMap('bart-cmp-map', 37.780, -122.270, 9, {
+        zoomControl: false,
+        scrollWheelZoom: false,
+        extraOpts: { dragging: false, doubleClickZoom: false },
+    });
+    drawBARTLines(map, 0.7);
+    Object.values(BART_STATIONS).forEach(s => {
+        L.circleMarker([s.lat, s.lng], { radius: 2, fillColor: '#aaa', color: '#aaa', weight: 0.5, fillOpacity: 0.8 }).addTo(map);
+    });
+
+    (async () => {
+        const depsEl = document.getElementById('bart-cmp-deps');
+        const errEl = document.getElementById('bart-cmp-err');
+        // const staleMarkers = [];
+        try {
+            const url = `https://api.bart.gov/api/etd.aspx?cmd=etd&orig=MONT&key=${BART_API_KEY}&json=y`;
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            const etds = data?.root?.station?.[0]?.etd || [];
+            if (!etds.length) throw new Error('No ETD data');
+
+            const rows = [];
+            etds.forEach(dest => {
+                (dest.estimate || []).slice(0, 2).forEach(est => {
+                    const mins = est.minutes === 'Leaving' ? 0 : parseInt(est.minutes, 10);
+                    rows.push({
+                        color: (est.color || '').toUpperCase(),
+                        colorHex: BART_LINE_COLORS[(est.color || '').toUpperCase()] || '#aaa',
+                        platform: est.platform,
+                        dest: dest.destination,
+                        mins,
+                    });
+                });
+            });
+
+            rows.sort((a, b) => a.mins - b.mins);
+            depsEl.innerHTML = rows.slice(0, 6).map(r => `
+                <div class="dep-row">
+                    <div class="dep-dot" style="background:${r.colorHex}"></div>
+                    <div class="dep-line">${r.color.slice(0,3)}</div>
+                    <div class="dep-dest">${r.dest}</div>
+                    <div class="dep-min">${r.mins === 0 ? '<span style="color:var(--green)">Now</span>' : r.mins + ' min'}</div>
+                </div>
+            `).join('');
+        } catch(e) {
+            depsEl.innerHTML = '';
+            errEl.style.display = 'block';
+            errEl.textContent = `API Error: ${e.message} :(`;
+        }
+    })();
+})();
+
+// some help from AI on getting the correct api to work, had to resort from network-wide to hbf only :(
+
+(function() {
+  const el = document.getElementById('munich-cmp-map');
+  if (!el) return;
+
+  const map = createDarkMap('munich-cmp-map', 48.137, 11.575, 11, {
+    zoomControl: false,
+    scrollWheelZoom: false,
+    extraOpts: { dragging: false, doubleClickZoom: false },
+  });
+
+  // Munich U-Bahn approximate routes (real station coordinates)
+  const MUNICH_LINES = {
+    U1: { color: '#e2001a', coords: [[48.1274,11.4989],[48.1335,11.5237],[48.1369,11.5493],[48.1398,11.5573],[48.1418,11.5650],[48.1382,11.5748],[48.1357,11.5813],[48.1298,11.5913],[48.1242,11.5967],[48.1212,11.6046]] },
+    U2: { color: '#0065b3', coords: [[48.1703,11.4699],[48.1636,11.4878],[48.1573,11.5007],[48.1496,11.5107],[48.1418,11.5163],[48.1376,11.5313],[48.1347,11.5407],[48.1311,11.5494],[48.1280,11.5580],[48.1248,11.5668],[48.1218,11.5746],[48.1187,11.5847],[48.1181,11.5965],[48.1192,11.6084],[48.1224,11.6218]] },
+    U3: { color: '#f08700', coords: [[48.2014,11.5327],[48.1935,11.5283],[48.1847,11.5281],[48.1768,11.5282],[48.1697,11.5295],[48.1637,11.5329],[48.1575,11.5371],[48.1497,11.5388],[48.1418,11.5385],[48.1376,11.5313],[48.1324,11.5288],[48.1258,11.5249],[48.1195,11.5210],[48.1110,11.5220],[48.1020,11.5196]] },
+    U4: { color: '#00ab8e', coords: [[48.1498,11.5387],[48.1437,11.5324],[48.1418,11.5163],[48.1389,11.5057],[48.1378,11.4966],[48.1374,11.4877],[48.1375,11.4795]] },
+    U5: { color: '#d06c00', coords: [[48.1424,11.4682],[48.1411,11.4793],[48.1374,11.4877],[48.1340,11.4975],[48.1418,11.5163],[48.1466,11.5247],[48.1502,11.5350],[48.1489,11.5463],[48.1484,11.5576],[48.1499,11.5694],[48.1502,11.5828]] },
+    U6: { color: '#006ab3', coords: [[48.2538,11.5475],[48.2424,11.5499],[48.2320,11.5493],[48.2187,11.5476],[48.1987,11.5408],[48.1847,11.5380],[48.1697,11.5341],[48.1575,11.5371],[48.1418,11.5385],[48.1376,11.5313],[48.1288,11.5353],[48.1209,11.5375],[48.1090,11.5394],[48.0973,11.5345]] },
+  };
+
+  Object.entries(MUNICH_LINES).forEach(([name, line]) => {
+    L.polyline(line.coords, { color: line.color, weight: 2.5, opacity: 0.75 }).addTo(map);
+    // Terminus markers
+    L.circleMarker(line.coords[0], { radius: 3, fillColor: line.color, color: '#111', weight: 1, fillOpacity: 0.9 }).addTo(map);
+    L.circleMarker(line.coords[line.coords.length-1], { radius: 3, fillColor: line.color, color: '#111', weight: 1, fillOpacity: 0.9 }).addTo(map);
+  });
+
+  // Mark Hauptbahnhof
+  L.circleMarker([48.1400, 11.5600], { radius: 5, fillColor: '#fff', color: '#111', weight: 1.5, fillOpacity: 1 })
+    .bindTooltip('Hauptbahnhof', { className: 'train-tooltip', direction: 'top', permanent: false })
+    .addTo(map);
+
+  // MVG API
+  (async () => {
+    const depsEl = document.getElementById('munich-cmp-deps');
+    const errEl  = document.getElementById('munich-cmp-err');
+    try {
+      // MVG public departure API - Hauptbahnhof global station ID
+      const MVG_URL = CORS_PROXY + encodeURIComponent('https://www.mvg.de/api/bgw-pt/v3/departures?globalId=de:09162:6&limit=10');
+      const resp = await fetch(MVG_URL);
+      if (!resp.ok) throw new Error(`MVG API HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      const deps = Array.isArray(data) ? data : (data.departures || data.entries || []);
+      if (!deps.length) throw new Error('No departure data returned from MVG API');
+
+      // Only U-Bahn lines
+      const ubahn = deps.filter(d => {
+        const lineId = d.line || d.label || d.sev || '';
+        return String(lineId).toUpperCase().startsWith('U');
+      }).slice(0, 8);
+
+      if (!ubahn.length) throw new Error('No U-Bahn departures in MVG response');
+
+      const lineColors = { U1:'#e2001a',U2:'#0065b3',U3:'#f08700',U4:'#00ab8e',U5:'#d06c00',U6:'#006ab3',U7:'#e2001a',U8:'#006ab3' };
+
+      depsEl.innerHTML = ubahn.map(d => {
+        const lineStr = (d.line || d.label || '?').toString().toUpperCase();
+        const col     = lineColors[lineStr] || '#aaa';
+        const dest    = d.destination || d.direction || '?';
+        let   minsRaw = d.departureInSeconds != null
+          ? Math.round(d.departureInSeconds / 60)
+          : (d.departing != null ? Math.round((new Date(d.departing) - Date.now()) / 60000) : null);
+        if (minsRaw == null && d.realDepartureTime) {
+          minsRaw = Math.round((new Date(d.realDepartureTime) - Date.now()) / 60000);
+        }
+        const minsStr = minsRaw != null
+          ? (minsRaw <= 0 ? '<span style="color:var(--green)">Now</span>' : minsRaw + ' min')
+          : '-';
+        return `<div class="dep-row">
+          <div class="dep-dot" style="background:${col}"></div>
+          <div class="dep-line">${lineStr}</div>
+          <div class="dep-dest">${dest.slice(0,20)}</div>
+          <div class="dep-min">${minsStr}</div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      depsEl.innerHTML = '';
+      errEl.style.display = 'block';
+      errEl.textContent = `MVG API unavailable: ${e.message}`;
+    }
+  })();
+})();
+
+(function() {
+  const el = document.getElementById('vienna-cmp-map');
+  if (!el) return;
+
+  const map = createDarkMap('vienna-cmp-map', 48.208, 16.373, 11, {
+    zoomControl: false,
+    scrollWheelZoom: false,
+    extraOpts: { dragging: false, doubleClickZoom: false },
+  });
+  const VIENNA_LINES = {
+    U1: { color: '#e2001a', coords: [[48.1616,16.3364],[48.1669,16.3428],[48.1735,16.3504],[48.1823,16.3625],[48.1903,16.3693],[48.1984,16.3774],[48.2033,16.3797],[48.2085,16.3788],[48.2138,16.3730],[48.2183,16.3688],[48.2278,16.3671],[48.2400,16.3705],[48.2445,16.3687]] },
+    U2: { color: '#834a9e', coords: [[48.1733,16.2830],[48.1811,16.2908],[48.1880,16.2980],[48.1943,16.3057],[48.2000,16.3177],[48.2032,16.3262],[48.2040,16.3364],[48.2033,16.3467],[48.2050,16.3575],[48.2088,16.3787],[48.2131,16.3878],[48.2169,16.4015],[48.2235,16.4140],[48.2302,16.4292]] },
+    U3: { color: '#f08700', coords: [[48.2181,16.2733],[48.2168,16.2868],[48.2144,16.3003],[48.2063,16.3157],[48.1995,16.3273],[48.1984,16.3774],[48.1979,16.3818],[48.1957,16.3962],[48.1937,16.4119],[48.1935,16.4285],[48.1935,16.4455]] },
+    U4: { color: '#00a050', coords: [[48.1786,16.2937],[48.1900,16.3156],[48.2000,16.3177],[48.2033,16.3467],[48.2040,16.3600],[48.2057,16.3710],[48.2074,16.3803],[48.2100,16.3940],[48.2136,16.4090]] },
+    U6: { color: '#9d5f00', coords: [[48.1418,16.3185],[48.1532,16.3200],[48.1637,16.3281],[48.1738,16.3342],[48.1851,16.3395],[48.1960,16.3458],[48.2033,16.3467],[48.2140,16.3524],[48.2289,16.3560],[48.2380,16.3658],[48.2476,16.3752]] },
+  };
+
+  Object.entries(VIENNA_LINES).forEach(([name, line]) => {
+    L.polyline(line.coords, { color: line.color, weight: 2.5, opacity: 0.75 }).addTo(map);
+    L.circleMarker(line.coords[0], { radius: 3, fillColor: line.color, color: '#111', weight: 1, fillOpacity: 0.9 }).addTo(map);
+    L.circleMarker(line.coords[line.coords.length-1], { radius: 3, fillColor: line.color, color: '#111', weight: 1, fillOpacity: 0.9 }).addTo(map);
+  });
+
+  L.circleMarker([48.2000, 16.3694], { radius: 5, fillColor: '#fff', color: '#111', weight: 1.5, fillOpacity: 1 })
+    .bindTooltip('Karlsplatz', { className: 'train-tooltip', direction: 'top' })
+    .addTo(map);
+  const WL_RBLS = [143, 144, 4101, 4102, 4119, 252];
+  const WL_URL = CORS_PROXY + encodeURIComponent('https://www.wienerlinien.at/ogd_realtime/monitor?' + WL_RBLS.map(r => 'rbl=' + r).join('&'));
+
+  (async () => {
+    const depsEl = document.getElementById('vienna-cmp-deps');
+    const errEl  = document.getElementById('vienna-cmp-err');
+    try {
+      const resp = await fetch(WL_URL);
+      if (!resp.ok) throw new Error(`Wiener Linien API HTTP ${resp.status}`);
+      const data = await resp.json();
+      const monitors = data?.data?.monitors || [];
+      if (!monitors.length) throw new Error('No monitor data from Wiener Linien API');
+
+      const rows = [];
+      monitors.forEach(mon => {
+        (mon.lines || []).forEach(line => {
+          const lineId  = line.name || '?';
+          const dir     = line.towards || line.direction || '';
+          (line.departures?.departure || []).slice(0, 2).forEach(dep => {
+            const cd = dep.departureTime?.countdown;
+            rows.push({ lineId, dir, countdown: typeof cd === 'number' ? cd : null });
+          });
+        });
+      });
+
+      rows.sort((a, b) => (a.countdown ?? 999) - (b.countdown ?? 999));
+
+      const lineColors = { U1:'#e2001a',U2:'#834a9e',U3:'#f08700',U4:'#00a050',U6:'#9d5f00' };
+
+      depsEl.innerHTML = rows.slice(0, 8).map(r => {
+        const col = lineColors[r.lineId] || '#aaa';
+        const cnt = r.countdown;
+        const minsStr = cnt == null ? '-' : (cnt <= 0 ? '<span style="color:var(--green)">Now</span>' : cnt + ' min');
+        return `<div class="dep-row">
+          <div class="dep-dot" style="background:${col}"></div>
+          <div class="dep-line">${r.lineId}</div>
+          <div class="dep-dest">${(r.dir || '?').slice(0,20)}</div>
+          <div class="dep-min">${minsStr}</div>
+        </div>`;
+      }).join('') || '<div class="dep-row"><span class="dep-dest">No departures found</span></div>';
+
+    } catch(e) {
+      depsEl.innerHTML = '';
+      errEl.style.display = 'block';
+      errEl.textContent = `Wiener Linien API error: ${e.message}`;
+    }
+  })();
+})();
+
+// it works owo
+// i wonder if anyone actually reads these notes
+// if so, ily <3

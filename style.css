@@ -6,13 +6,13 @@
     --text: #e6e3dc;
     --muted: #7a7770;
     --dim: #3a3835;
-    --blue: #0099d8;
+    --blue: #0099d8; /* yes this is bart blue :3 */
     --orange: #f5a623;
     --red: #e32726;
     --green: #4db848;
     --yellow: #f5d200;
-    --r: 5px;
-    --rl: 10px;
+    --r: 6px;
+    --rl: 12px;
     --mono: 'Space Mono', monospace;
     --display: 'Syne', sans-serif;
     --body: 'DM Sans', sans-serif;
