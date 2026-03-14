@@ -123,3 +123,255 @@ const BART_STATIONS = {
   '16TH': { name:'16th St. Mission',     lat:37.765062, lng:-122.419694 },
   '24TH': { name:'24th St. Mission',     lat:37.752240, lng:-122.418143 },
 };
+
+const BART_LINE_SEQS = {
+  RED:    ['RICH','DELN','PLZA','ECCR','NBRK','DBRK','ASHB','MCAR','19TH','12TH','WOAK','EMBR','MONT','POWL','CIVC','16TH','24TH','GLEN','BALB','DALY','COLM','SSAN','SFIA','MLBR'],
+  YELLOW: ['ANTC','PITT','NCON','CONC','PHIL','WCRK','LAFY','ORIN','ROCK','MCAR','19TH','12TH','WOAK','EMBR','MONT','POWL','CIVC','16TH','24TH','GLEN','BALB','DALY','COLM','SSAN','SFIA','MLBR'],
+  ORANGE: ['RICH','DELN','PLZA','ECCR','NBRK','DBRK','ASHB','MCAR','19TH','12TH','LAKE','FTVL','COLS','SANL','BAYF','HAYW','SHAY','UCTY','FRMT','WARM','MLPT','BERY'],
+  BLUE:   ['DUBL','WDUB','CAST','BAYF','SANL','COLS','FTVL','LAKE','12TH','WOAK','EMBR','MONT','POWL','CIVC','16TH','24TH','GLEN','BALB','DALY'],
+  GREEN:  ['BERY','MLPT','WARM','FRMT','UCTY','SHAY','HAYW','BAYF','SANL','COLS','FTVL','LAKE','12TH','WOAK','EMBR','MONT','POWL','CIVC','16TH','24TH','GLEN','BALB','DALY'],
+};
+
+const BART_LINE_COLORS = {
+  RED: '#ed1c24', YELLOW: '#f9d71c', ORANGE: '#ef7c00',
+  BLUE: '#00a1df', GREEN: '#4bbf6b',
+};
+
+const AVG_SEG_MIN = 2.6; // avg time it takes from one bart station to next
+
+// leaflet for map
+
+const CARTO_DARK_TILES = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const CARTO_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+function createDarkMap(elementId, lat, lng, zoom, opts = {}) {
+    const map = L.map(elementId, {
+        center: [lat, lng],
+        zoom: zoom,
+        zoomControl: opts.zoomControl !== false,
+        attributionControl: opts.attributionControl !== false,
+        scrollWheelZoom: opts.scrollWheelZoom !== false,
+        ...opts.extraOpts
+    });
+    L.titleLayer(CARTO_DARK_TILES, {
+        attribution: CARTO_ATTR,
+        subdomains: 'abcd',
+        maxZoom: 19,
+    }).addTo(map);
+    return map;
+}
+
+function drawBARTLines(map, opacity = 0.7) {
+    Object.entries(BART_LINE_SEQS).forEach(([line, seq]) => {
+        const coords = seq.map(abbr => {
+            const s = BART_STATIONS[abbr];
+            return s ? [s.lat, s.lng] : null;
+        }).filter(Boolean);
+        L.polyline(coords, {
+            color: BART_LINE_COLORS[line],
+            weight: 3,
+            opacity: opacity,
+            lineJoin: 'round',
+        }).addTo(map);
+    });
+}
+
+function drawBARTStations(map, small = false) {
+  Object.entries(BART_STATIONS).forEach(([abbr, stn]) => {
+    const r = small ? 3 : 4;
+    L.circleMarker([stn.lat, stn.lng], {
+      radius: r,
+      fillColor: '#0c0c14',
+      color: '#aaa',
+      weight: 1,
+      opacity: 0.7,
+      fillOpacity: 1,
+    }).bindTooltip(stn.name, { className: 'train-tooltip', direction: 'top' }).addTo(map);
+  });
+}
+
+// this is a public api key /tableflip
+const BART_API_KEY = 'MW9S-E7SL-26DU-VV8V';
+const BART_ETD_URL = `https://api.bart.gov/api/etd.aspx?cmd=etd&orig=ALL&key=${BART_API_KEY}&json=y`;
+
+async function fetchBARTEtd() {
+    const resp = await fetch(BART_ETD_URL);
+    if (!resp.ok) throw new Error(`BART API HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (!data?.root?.station) throw new Error('Unexpected API format waaaah :c');
+    return data.root.station;
+}
+
+function normAbbr(a) {
+    const map = { '12th': '12TH', '19th': '19TH', '16th': '16TH', '24th': '24TH' };
+    const k = a ? a.toLowerCase() : '';
+    return map[k] || a.toUpperCase();
+}
+
+// ai-assisted code next ~30 lines (i am seriously stupid)
+
+function computeTrainPositions(etdStations) {
+  const candidates = new Map();
+
+  etdStations.forEach(stnData => {
+    const abbr = normAbbr(stnData.abbr);
+    const station = BART_STATIONS[abbr];
+    if (!station) return;
+
+    (stnData.etd || []).forEach(dest => {
+      const destAbbr = normAbbr(dest.abbreviation);
+      const color = (dest.estimate?.[0]?.color || '').toUpperCase();
+      const lineSeq = BART_LINE_SEQS[color];
+      if (!lineSeq) return;
+
+      (dest.estimate || []).slice(0, 2).forEach(est => {
+        const mins = est.minutes === 'Leaving' ? 0 : parseInt(est.minutes, 10);
+        if (isNaN(mins) || mins > 20) return;
+
+        // Find station in sequence oriented toward destination
+        let seq = lineSeq;
+        const destIdx = lineSeq.indexOf(destAbbr);
+        const stnIdx  = lineSeq.indexOf(abbr);
+        if (destIdx === -1 || stnIdx === -1) return;
+        if (destIdx < stnIdx) seq = [...lineSeq].reverse();
+
+        const posInSeq = seq.indexOf(abbr);
+        if (posInSeq <= 0) {
+          // Train is at/near the terminus; place dot at this station
+          const key = `${color}_${abbr}_0`;
+          if (!candidates.has(key)) {
+            candidates.set(key, {
+              lat: station.lat, lng: station.lng,
+              color: color.toLowerCase(), colorHex: BART_LINE_COLORS[color],
+              destination: dest.destination, minutes: mins, stationAbbr: abbr,
+            });
+          }
+          return;
+        }
+
+        const prevAbbr = seq[posInSeq - 1];
+        const prevStn  = BART_STATIONS[prevAbbr];
+        if (!prevStn) return;
+
+        // Fraction of travel from prevStn → station completed
+        // When mins=0: fraction=1 (at station). When mins=AVG_SEG_MIN: fraction=0 (just left prev).
+        const frac = Math.max(0, Math.min(1, 1 - mins / AVG_SEG_MIN));
+
+        const lat = prevStn.lat + (station.lat - prevStn.lat) * frac;
+        const lng = prevStn.lng + (station.lng - prevStn.lng) * frac;
+
+        // Dedup: one dot per (color, segment pair, approximate minute slot)
+        const slot = Math.round(mins);
+        const key  = `${color}_${prevAbbr}_${abbr}_${slot}`;
+        if (!candidates.has(key)) {
+          candidates.set(key, {
+            lat, lng, color: color.toLowerCase(), colorHex: BART_LINE_COLORS[color],
+            destination: dest.destination, minutes: mins, stationAbbr: abbr,
+          });
+        }
+      });
+    });
+  });
+
+  return Array.from(candidates.values());
+}
+
+// ok i know how to do this now xoxo
+
+(function() {
+    const mapEl = document.getElementById('bart-live-map');
+    if (!mapEl) return;
+
+    const map = createDarkMap('bart-live-map', 37.780, -122.270, 10, {
+        zoomControl: true,
+        scrollWheelZoom: true,
+        extraOpts: { minZoom: 8, maxZoom: 16 },
+    });
+
+    drawBARTLines(map, 0.65);
+    drawBARTStations(map, false);
+
+    const trainLayer = L.layerGroup().addTo(map);
+    const errorBox   = document.getElementById('live-api-error');
+    const errorMsg   = document.getElementById('live-api-error-msg');
+    const statusTxt  = document.getElementById('live-status-txt');
+    const trainCnt   = document.getElementById('train-count');
+    const etdList    = document.getElementById('etd-list');
+
+    let lastFetch = null;
+
+    function trainMarker(pos) {
+        const color = pos.colorHex || '#aaa';
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">
+      <circle cx="7" cy="7" r="5.5" fill="${color}" fill-opacity="0.25" stroke="${color}" stroke-width="1.5"/>
+      <circle cx="7" cy="7" r="2.5" fill="${color}"/>
+    </svg>`;
+        const icon = L.divIcon({
+            html: svg,
+            className: '',
+            iconSize: [14, 14],
+            iconAnchor: [7, 7],
+        });
+        const minStr = pos.minutes === 0 ? 'Now Departing' : `${pos.minutes} min to ${BART_STATIONS[pos.stationAbbr]?.name || pos.stationAbbr}`;
+        return L.marker([pos.lat, pos.lng], { icon })
+            .bindTooltip(`${pos.color.toUpperCase()} --> ${pos.destination}<br>${minStr}`, {
+                className: 'train-tooltip',
+                direction: 'top',
+            });
+        
+    }
+
+    async function refreshLive() {
+        try {
+            const stations = await fetchBARTEtd();
+            errorBox.style.display = 'none';
+            lastFetch = new Date();
+
+            trainLayer.clearLayers();
+            const positions = computeTrainPositions(stations);
+            positions.forEach(p => trainMarker(p).addTo(trainLayer));
+            trainCnt.textContent = positions.length;
+
+            const hh = lastFetch.getHours().toString().padStart(2, '0');
+            const mm = lastFetch.getMinutes().toString().padStart(2, '0');
+            const ss = lastFetch.getSeconds().toString().padStart(2, '0');
+            statusTxt.textContent = `Last updated: ${hh}:${mm}:${ss} :3`;
+            
+            const imminentDeps = [];
+            stations.forEach(stn => {
+                const abbr = normAbbr(stn.abbr);
+                (stn.etd || []).forEach(dest => {
+                    (dest.estimate || []).slice(0, 2).forEach(est => {
+                        const mins = est.minutes === 'Leaving' ? 0 : parseInt(est.minutes, 10);
+                        if (!isNaN(mins) && mins <= 5) {
+                            imminentDeps.push({
+                                station: stn.name,
+                                destination: dest.destination,
+                                color: (est.color || '').toLowerCase(),
+                                colorHex: BART_LINE_COLORS[(est.color || '').toUpperCase()] || '#aaa',
+                                mins,
+                            });
+                        }
+                    });
+            });
+        });
+        imminentDeps.sort((a, b) => a.mins - b.mins);
+        etdList.innerHTML = imminentDeps.slice(0, 14).map(d => `
+            <div class="etd-row">
+                <div class="etd-dot" style="background:${d.colorHex}"></div>
+                <span class="etd-stn" title="${d.station} → ${d.destination}">${d.station.replace(/ Station$/,'').replace(/ \(.*\)$/,'').slice(0,20)}</span>
+                <span class="etd-min">${d.mins === 0 ? '<span style="color:var(--green)">Now</span>' : d.mins + ' min'}</span>
+                </div>
+                `).join('') || '<div class="etd-row"><span class="etd-stn">No imminent departures</span></div>';
+    } catch(e) {
+        errorBox.style.display = 'block';
+        errorMsg.textContent = `BART API error: ${e.message}.`;
+        statusTxt.textContent = 'API Error :(';
+        trainLayer.clearLayers();
+        trainCnt.textContent = '-';
+    }
+}
+
+refreshLive();
+setInterval(refreshLive, 30000);
+})();
