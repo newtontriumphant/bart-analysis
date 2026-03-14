@@ -1,6 +1,10 @@
 # bart-analysis
 Hi there! Thanks for reviewing my project!
 
+**NOTE: THIS IS A TRANSITTIME ENTRY**! :3
+
+This was all done in one day (yes, like 6 hours of hackatime in 10 hours of day, I know I'm insane...)
+
 This is a BART (Bay Area Rapid Transit) Analysis (Economics Extra Credit) using realtime API and GTFS data from BART, Wiener Linien, and the Munich Verkehrsbund.
 
 Submission for HCTG TransitTime, double dipping with my school Economics Public Good project for extra credit because whyyy not (:
