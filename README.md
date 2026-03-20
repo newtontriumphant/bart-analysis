@@ -1,5 +1,5 @@
 # bart-analysis
-Hi there! Thanks for taking a gander at my project!
+Hi there! Thanks for taking a gander at my project! It's currently online @ https://bart-analysis.vercel.app/!
 
 This is a BART (Bay Area Rapid Transit) Analysis (Economics Extra Credit) using realtime API and GTFS data from BART, Wiener Linien, and the Munich Verkehrsbund.
 
